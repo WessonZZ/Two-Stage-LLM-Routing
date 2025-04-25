@@ -6,6 +6,8 @@ datasets/
 
 output/
 
+script/figure.py
+
 Poster_LLM.pptx
 
 perf-cost.xlsx
