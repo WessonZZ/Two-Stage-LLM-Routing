@@ -3,7 +3,7 @@
 MODEL="/root/mDeberta-v3-base"
 
 LR=5e-4
-
+# CUDA_VISIBLE_DEVICES=0,1,3 torchrun --nproc_per_node=3 --nnodes=1 --node_rank=0 script/train_router_ddp.py \
 python train_router.py \
     --model_path "${MODEL}"\
     --data_path 'datasets/embedLLM/embed-train.csv'\
