@@ -118,26 +118,26 @@ class RouterData(Dataset):
         # model_clusters = torch.stack([torch.tensor(v) for _, v in sorted(model_clusters.items())])
         return self.tokenize(prompt, pos_models, neg_models, model_labels, model_costs)
     
-    def get_most_common_two_clusters(self, pos, neg):
+    def get_most_common_clusters(self, pos, neg):
         # 统计每个模型所属簇的频次
         pos_1 = pos
         most_common_clusters = []
 
         counts = Counter([self.model_clusters[m] for m in pos_1])
-        # 获取出现次数最多的两个簇，按频次降序排列
+        # 获取出现次数最多的簇，按频次降序排列
         most_common_clusters = [k for k, v in counts.most_common(1)]
         
         # 如果只找到了一个簇，继续扩展pos_1，加入一个负样本
         if len(most_common_clusters) < 1:
-            for i in range(len(neg)):
-                pos_1 = pos_1 + neg[len(pos_1) - len(pos):]  # 加入一个负样本
-                counts = Counter([self.model_clusters[m] for m in pos_1])
-                # 获取出现次数最多的两个簇，按频次降序排列
-                most_common_clusters = [k for k, v in counts.most_common(1)]
-                if len(most_common_clusters) > 1:
-                    break
+            needed_neg_samples = 1 - len(most_common_clusters)
+            # 确保不会超出负样本的范围
+            pos_1 += neg[:needed_neg_samples]
+            # 重新计算频次
+            counts = Counter([self.model_clusters[m] for m in pos_1])
+            # 获取新的簇
+            most_common_clusters = [k for k, v in counts.most_common(1)]
         
-        # 返回出现最多的两个簇的簇ID
+        # 返回出现最多的簇ID
         return most_common_clusters
 
     
@@ -151,7 +151,7 @@ class RouterData(Dataset):
         # inputs = self.tokenizer.convert_tokens_to_ids(tokens)
         # inputs = self.tokenizer.prepare_for_model(inputs, max_length=self.max_seq_length, padding='max_length', return_tensors='pt', add_special_tokens = True)
 
-        cluster_pos = self.get_most_common_two_clusters(pos, neg) #the cluster who has the most positive models as the positive clusters
+        cluster_pos = self.get_most_common_clusters(pos, neg) #the cluster who has the most positive models as the positive clusters
         # print(len(cluster_pos))
         cluster_neg = torch.tensor(list(set([c for c in self.clusters if c not in cluster_pos])))
         cluster_pos = torch.tensor(cluster_pos)
@@ -189,10 +189,11 @@ if __name__ == "__main__":
         max_seq_length = 512
         dim = 768
         is_ood = True
+        is_newmodels = False
         
     tokenizer = AutoTokenizer.from_pretrained("microsoft/mdeberta-v3-base", truncation_side = 'left', padding = True)
         
-    data = RouterData(config.data_path, config.cluster_path, config.embedding_path, config.max_seq_length, tokenizer, config.is_ood)
+    data = RouterData(config.data_path, config.cluster_path, config.embedding_path, config.max_seq_length, tokenizer, config.is_ood, config.is_newmodels)
     
     dataloader = DataLoader(data, batch_size= 4, shuffle = False)
     for batch in dataloader:
